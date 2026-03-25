@@ -72,3 +72,17 @@ INSERT INTO radgroupreply (groupname, attribute, op, value) VALUES
 ('guest', 'Tunnel-Type', ':=', 'VLAN'),
 ('guest', 'Tunnel-Medium-Type', ':=', 'IEEE-802'),
 ('guest', 'Tunnel-Private-Group-Id', ':=', '30');
+
+
+-- MAB guest/fixed
+INSERT INTO radcheck (username, attribute, op, value) VALUES
+('AA:BB:CC:DD:EE:FF', 'MAB-Password', ':=', 'mab-secret');
+
+-- CHAP için 
+INSERT INTO radcheck (username, attribute, op, value) VALUES
+('chap_user', 'Cleartext-Password', ':=', 'chap123');
+
+-- Kullanıcıya özel attributes (radreply)
+INSERT INTO radreply (username, attribute, op, value) VALUES
+('admin_user', 'Framed-IP-Address', ':=', '192.168.1.10');
+
