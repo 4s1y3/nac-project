@@ -1,3 +1,104 @@
+# NAC System — Network Access Control
+
+A RADIUS-based Network Access Control system built with FreeRADIUS, FastAPI, PostgreSQL, and Redis, fully containerized with Docker Compose.
+
+## Technologies
+
+- FreeRADIUS 3.2
+- Python 3.13 / FastAPI
+- PostgreSQL 18
+- Redis 8
+- Docker Compose
+
+## Requirements
+
+- Docker
+- Docker Compose
+
+## Setup
+
+1. Clone the repository:
+   git clone https://github.com/4s1y3/nac-project.git
+   cd nac-project
+
+2. Create your environment file:
+   cp .env.example .env
+
+3. Edit .env and set your own values.
+
+4. Start all services:
+   docker compose up -d
+
+5. Check all services are healthy:
+   docker compose ps
+
+## Services
+
+| Service     | Port       | Description              |
+|-------------|------------|--------------------------|
+| FastAPI     | 8000       | Policy Engine REST API   |
+| FreeRADIUS  | 1812/udp   | RADIUS Authentication    |
+| FreeRADIUS  | 1813/udp   | RADIUS Accounting        |
+| PostgreSQL  | 5432       | Database                 |
+| Redis       | 6379       | Cache / Rate Limiting    |
+
+## API Endpoints
+
+| Endpoint          | Method | Description              |
+|-------------------|--------|--------------------------|
+| /auth             | POST   | User authentication      |
+| /authorize        | POST   | VLAN policy assignment   |
+| /accounting       | POST   | Session data recording   |
+| /users            | GET    | List users and status    |
+| /sessions/active  | GET    | Active sessions (Redis)  |
+| /health           | GET    | System health check      |
+
+API documentation: http://localhost:8000/docs
+
+## Testing
+
+PAP authentication:
+   radtest admin_user admin123 localhost 0 testing123
+
+MAB authentication:
+   echo "User-Name=AA:BB:CC:DD:EE:FF, User-Password=AA:BB:CC:DD:EE:FF, Calling-Station-Id=AA:BB:CC:DD:EE:FF" | radclient localhost auth testing123
+
+Accounting Start:
+   echo "User-Name=admin_user, Acct-Status-Type=Start, Acct-Session-Id=test123, NAS-IP-Address=127.0.0.1" | radclient localhost acct testing123
+
+FastAPI health check:
+   curl http://localhost:8000/health
+
+## User Groups and VLANs
+
+| Group    | VLAN |
+|----------|------|
+| admin    | 10   |
+| employee | 20   |
+| guest    | 30   |
+
+## Test Users
+
+| Username      | Password     | Group    |
+|---------------|--------------|----------|
+| admin_user    | admin123     | admin    |
+| employee_user | employee123  | employee |
+| guest_user    | guest123     | guest    |
+
+## Security Notes
+
+- Passwords are hashed with bcrypt (cost factor 12)
+- Rate limiting: 5 failed attempts triggers a 300 second block
+- Secrets are stored in .env and never committed to git
+- All services communicate through an isolated Docker network
+
+
+
+---
+
+# TR
+
+
 # NAC Sistemi — Network Access Control
 
 RADIUS protokolü kullanılarak geliştirilmiş bir Ağ Erişim Denetimi sistemi. FreeRADIUS, FastAPI, PostgreSQL ve Redis ile Docker Compose üzerinde çalışmaktadır.
@@ -87,7 +188,7 @@ FastAPI sağlık kontrolü:
 
 ## Güvenlik Notları
 
-- Şifreler bcrypt ile hash'lendi (maliyet faktörü: 12)
-- Rate limiting: 5 başarısız denemede 300 saniyelik engelleme
-- Hassas bilgiler .env dosyasında tutulur, Git'e gönderilmez
-- Tüm servisler izole bir Docker ağında iletişim kurar
+- Şifreler bcrypt ile hash'lendi (maliyet faktörü: 12).
+- Rate limiting: 5 başarısız denemede 300 saniyelik engelleme.
+- Hassas bilgiler .env dosyasında tutulur, Git'e gönderilmez.
+- Tüm servisler izole bir Docker ağında iletişim kurar.
