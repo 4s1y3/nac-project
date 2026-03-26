@@ -1,141 +1,93 @@
-# NAC Sistemi Projesi
+# NAC Sistemi — Network Access Control
 
-Bu proje, Docker Compose üzerinde FreeRADIUS + PostgreSQL + Redis + FastAPI ile tam bir NAC (Network Access Control) sistemi kurmaktadır.
+RADIUS protokolü kullanılarak geliştirilmiş bir Ağ Erişim Denetimi sistemi. FreeRADIUS, FastAPI, PostgreSQL ve Redis ile Docker Compose üzerinde çalışmaktadır.
+
+## Teknolojiler
+
+- FreeRADIUS 3.2
+- Python 3.13 / FastAPI
+- PostgreSQL 18
+- Redis 8
+- Docker Compose
 
 ## Gereksinimler
 
-- Docker ve Docker Compose
-- Python 3.13 (API için)
+- Docker
+- Docker Compose
 
-## Kurulum ve Çalıştırma
+## Kurulum
 
-1. Projeyi klonlayın:
-   ```bash
-   git clone <repo-url>
+1. Repoyu klonla:
+   git clone https://github.com/4s1y3/nac-project.git
    cd nac-project
-   ```
 
-2. `.env` dosyasını oluşturun (`.env.example`'dan kopyalayın):
-   ```bash
+2. Ortam dosyasını oluştur:
    cp .env.example .env
-   # .env dosyasını düzenleyin (secret'ları ayarlayın)
-   ```
 
-3. Sistem çalıştırın:
-   ```bash
+3. .env dosyasını aç ve değerleri düzenle.
+
+4. Servisleri başlat:
    docker compose up -d
-   ```
 
-4. Servisler hazır olana kadar bekleyin (healthcheck'ler tamamlanacak).
+5. Servislerin sağlıklı çalıştığını kontrol et:
+   docker compose ps
 
-## Test Araçları
+## Servisler
 
-### PAP/CHAP Authentication Testi (radtest)
-```bash
-# PAP testi
-radtest admin_user admin123 localhost 0 testing123
+| Servis      | Port      | Açıklama                        |
+|-------------|-----------|----------------------------------|
+| FastAPI     | 8000      | Policy Engine REST API           |
+| FreeRADIUS  | 1812/udp  | RADIUS Kimlik Doğrulama          |
+| FreeRADIUS  | 1813/udp  | RADIUS Accounting                |
+| PostgreSQL  | 5432      | Veritabanı                       |
+| Redis       | 6379      | Önbellek ve Rate Limiting        |
 
-# CHAP testi (eğer destekleniyorsa)
-radtest chap_user chap123 localhost 0 testing123
-```
+## API Endpoint'leri
 
-### MAB Testi (radclient)
-```bash
-# Bilinen MAC
-echo "User-Name=AA:BB:CC:DD:EE:FF, Calling-Station-Id=AA:BB:CC:DD:EE:FF" | radclient localhost auth testing123
+| Endpoint         | Metot | Açıklama                        |
+|------------------|-------|----------------------------------|
+| /auth            | POST  | Kullanıcı kimlik doğrulama       |
+| /authorize       | POST  | VLAN politika ataması            |
+| /accounting      | POST  | Oturum verisi kaydetme           |
+| /users           | GET   | Kullanıcı listesi ve durum       |
+| /sessions/active | GET   | Aktif oturumlar (Redis)          |
+| /health          | GET   | Sistem sağlık kontrolü           |
 
-# Bilinmeyen MAC (reject)
-echo "User-Name=FF:FF:FF:FF:FF:FF, Calling-Station-Id=FF:FF:FF:FF:FF:FF" | radclient localhost auth testing123
-```
+API dokümantasyonu: http://localhost:8000/docs
 
-### Accounting Testi (radclient)
-```bash
-# Start
-echo "User-Name=admin_user, Acct-Status-Type=Start, Acct-Session-Id=12345, NAS-IP-Address=192.168.1.1" | radclient localhost acct testing123
+## Test Komutları
 
-# Interim-Update
-echo "User-Name=admin_user, Acct-Status-Type=Interim-Update, Acct-Session-Id=12345, Acct-Session-Time=60, Acct-Input-Octets=1000, Acct-Output-Octets=2000" | radclient localhost acct testing123
+PAP kimlik doğrulama:
+   radtest admin_user admin123 localhost 0 testing123
 
-# Stop
-echo "User-Name=admin_user, Acct-Status-Type=Stop, Acct-Session-Id=12345, Acct-Session-Time=120, Acct-Input-Octets=2000, Acct-Output-Octets=4000, Acct-Terminate-Cause=User-Request" | radclient localhost acct testing123
-```
+MAB kimlik doğrulama:
+   echo "User-Name=AA:BB:CC:DD:EE:FF, User-Password=AA:BB:CC:DD:EE:FF, Calling-Station-Id=AA:BB:CC:DD:EE:FF" | radclient localhost auth testing123
 
-### FastAPI Endpoint Testleri (curl)
-```bash
-# Health check
-curl http://localhost:8000/health
+Accounting Start:
+   echo "User-Name=admin_user, Acct-Status-Type=Start, Acct-Session-Id=test123, NAS-IP-Address=127.0.0.1" | radclient localhost acct testing123
 
-# Auth (PAP)
-curl -X POST http://localhost:8000/auth -H "Content-Type: application/json" -d '{"username": "admin_user", "password": "admin123"}'
+FastAPI sağlık kontrolü:
+   curl http://localhost:8000/health
 
-# Auth (MAB)
-curl -X POST http://localhost:8000/auth -H "Content-Type: application/json" -d '{"calling_station_id": "AA:BB:CC:DD:EE:FF", "method": "MAB"}'
+## Kullanıcı Grupları ve VLAN Atamaları
 
-# Authorize
-curl -X POST http://localhost:8000/authorize -H "Content-Type: application/json" -d '{"username": "admin_user"}'
+| Grup     | VLAN |
+|----------|------|
+| admin    | 10   |
+| employee | 20   |
+| guest    | 30   |
 
-# Accounting
-curl -X POST http://localhost:8000/accounting -H "Content-Type: application/json" -d '{"username": "admin_user", "session_id": "12345", "status_type": "Start", "nas_ip": "192.168.1.1"}'
+## Test Kullanıcıları
 
-# Users
-curl http://localhost:8000/users
+| Kullanıcı Adı | Şifre        | Grup     |
+|---------------|--------------|----------|
+| admin_user    | admin123     | admin    |
+| employee_user | employee123  | employee |
+| guest_user    | guest123     | guest    |
 
-# Sessions
-curl http://localhost:8000/sessions/active
-```
+## Güvenlik Notları
 
-## Mimari
-
-- **FreeRADIUS**: RADIUS sunucusu (auth, authz, acct)
-- **PostgreSQL**: Kullanıcı ve accounting verisi
-- **Redis**: Oturum cache ve rate-limit
-- **FastAPI**: Policy engine (rlm_rest entegrasyonu)
-
-## Notlar
-
-- Tüm servisler healthcheck ile korunmuştur.
-- Environment variable'lar `.env` dosyasında saklanır.
-- Test kullanıcıları: admin_user (admin), employee_user (employee), guest_user (guest)
-- VLAN grupları: admin (VLAN 10), employee (VLAN 20), guest (VLAN 30)
-```
-
-## Mimari
-
-- **FreeRADIUS**: RADIUS sunucusu (auth, authz, acct)
-- **PostgreSQL**: Kullanıcı ve accounting verisi
-- **Redis**: Oturum cache ve rate-limit
-- **FastAPI**: Policy engine (rlm_rest entegrasyonu)
-
-## Notlar
-
-- Tüm servisler healthcheck ile korunmuştur.
-- Environment variable'lar `.env` dosyasında saklanır.
-- Test kullanıcıları: admin_user (admin), employee_user (employee), guest_user (guest)
-- VLAN grupları: admin (VLAN 10), employee (VLAN 20), guest (VLAN 30)
-```
-
----
-
-## 🚀 Projeyi Çalıştırma Adımları
-
-1. **Hazırlık**:
-   - .env dosyasını oluştur (.env.example'dan kopyala ve değerleri doldur, örneğin `POSTGRES_PASSWORD=your_password`).
-
-2. **Çalıştır**:
-   ```bash
-   cd /home/elifasiye/nac-project
-   docker-compose up -d
-   ```
-
-3. **Bekle**: Servisler healthcheck tamamlanana kadar (1-2 dakika).
-
-4. **Test Et**:
-   - API: `curl http://localhost:8000/health` ({"status": "ok", "db": true, "redis": true})
-   - RADIUS: Yukarıdaki `radtest`/`radclient` komutlarını çalıştır.
-
-5. **Durdur**:
-   ```bash
-   docker-compose down
-
-   ```
-
+- Şifreler bcrypt ile hash'lendi (maliyet faktörü: 12)
+- Rate limiting: 5 başarısız denemede 300 saniyelik engelleme
+- Hassas bilgiler .env dosyasında tutulur, Git'e gönderilmez
+- Tüm servisler izole bir Docker ağında iletişim kurar
