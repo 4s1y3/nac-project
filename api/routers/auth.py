@@ -32,19 +32,24 @@ async def authenticate(request: AuthRequest):
     async with pool.acquire() as conn:
         if request.method.upper() == "MAB":
             row = await conn.fetchrow(
-                "SELECT username, value FROM radcheck WHERE username=$1 AND attribute='MAB-Password'",
+                "SELECT username FROM radcheck WHERE username=$1 AND attribute='MAB-Password'",
                 request.calling_station_id
             )
             if not row:
-                # optionally guest policy fallback
+                # Bilinmeyen MAC → fail sayacını artır, ardından reddet
+                fails = await redis.incr(fail_key)
+                await redis.expire(fail_key, BLOCK_TIME)
+                if int(fails) >= RATE_LIMIT:
+                    await redis.set(block_key, 1, ex=BLOCK_TIME)
+                    raise HTTPException(status_code=403, detail="Too many failed attempts")
                 raise HTTPException(status_code=401, detail="Unknown MAC")
-            # MAB: statik karşılaştırma veya token
-            if request.calling_station_id.lower() != row["username"].lower():
-                raise HTTPException(status_code=401, detail="MAB mismatch")
+            # MAC DB'de kayıtlı → kabul et
             await redis.delete(fail_key)
             return {"status": "accept", "username": row["username"], "auth_method": "MAB"}
 
         # PAP / CHAP
+        if not request.password:
+            raise HTTPException(status_code=400, detail="password required for PAP/CHAP")
         row = await conn.fetchrow(
             "SELECT value FROM radcheck WHERE username=$1 AND attribute='Bcrypt-Password'",
             request.username
@@ -53,7 +58,7 @@ async def authenticate(request: AuthRequest):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
     password_match = bcrypt.checkpw(
-        request.password.encode("utf-8"),
+        request.password.encode("utf-8"),  # type: ignore[union-attr]  # guard yukarıda
         row["value"].encode("utf-8")
     )
 

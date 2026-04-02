@@ -1,0 +1,11 @@
+policy {
+    mab_check {
+        if (&Calling-Station-Id =~ /^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$/) {
+            update control {
+                Auth-Type := MAB
+            }
+        } else {
+            reject
+        }
+    }
+}

@@ -1,0 +1,68 @@
+server default {
+    listen {
+        type = auth
+        ipaddr = *
+        port = 1812
+    }
+
+    listen {
+        type = acct
+        ipaddr = *
+        port = 1813
+    }
+
+    authorize {
+        filter_username
+
+        # MAC Authentication Bypass: Calling-Station-Id varsa ve User-Password yoksa MAB akışı
+        if (&Calling-Station-Id && !&User-Password) {
+            mab_check
+        }
+
+        # Sadece MAB değilse /authorize endpoint'ini çağır
+        if (!&control:Auth-Type || &control:Auth-Type != MAB) {
+            rest
+
+            # rest modülü başarılıysa Auth-Type'ı belirle
+            if (ok || updated) {
+                if (&Auth-Type == Accept) {
+                    noop
+                } else {
+                    update control {
+                        Auth-Type := PAP
+                    }
+                }
+            }
+        }
+    }
+
+    authenticate {
+        # MAB: rest /auth endpoint'ine yönlendir
+        Auth-Type MAB {
+            rest
+        }
+
+        # PAP: şifre doğrulaması rest üzerinden
+        Auth-Type PAP {
+            rest
+        }
+
+        # CHAP: rest üzerinden
+        Auth-Type CHAP {
+            rest
+        }
+    }
+
+    preacct {
+        acct_unique
+    }
+
+    accounting {
+        rest
+    }
+
+    post-auth {
+        rest.authorize
+    }
+}
+

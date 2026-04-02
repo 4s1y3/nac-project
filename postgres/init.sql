@@ -59,7 +59,8 @@ INSERT INTO radcheck (username, attribute, op, value) VALUES
 INSERT INTO radusergroup (username, groupname, priority) VALUES
 ('admin_user', 'admin', 1),
 ('employee_user', 'employee', 1),
-('guest_user', 'guest', 1);
+('guest_user', 'guest', 1),
+('chap_user', 'employee', 1);
 
 -- VLAN atamaları
 INSERT INTO radgroupreply (groupname, attribute, op, value) VALUES
@@ -86,3 +87,8 @@ INSERT INTO radcheck (username, attribute, op, value) VALUES
 INSERT INTO radreply (username, attribute, op, value) VALUES
 ('admin_user', 'Framed-IP-Address', ':=', '192.168.1.10');
 
+-- Performans index'leri
+CREATE INDEX idx_radcheck_username ON radcheck(username);
+CREATE INDEX idx_radusergroup_username ON radusergroup(username);
+CREATE INDEX idx_radacct_username ON radacct(username);
+CREATE INDEX idx_radacct_sessionid ON radacct(acctsessionid);

@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 from database import get_pool
 from redis_client import get_redis
+import json
 
 router = APIRouter()
 

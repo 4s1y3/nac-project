@@ -1,0 +1,9 @@
+policy {
+    filter_username {
+        if (&User-Name == "") {
+            reject
+        }
+    }
+}
+
+
