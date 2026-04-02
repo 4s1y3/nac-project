@@ -9,7 +9,7 @@ rest {
         uri = "${..connect_uri}/auth"
         method = 'post'
         body = 'json'
-        data = '{"username": "%{User-Name}", "password": "%{User-Password}", "calling_station_id": "%{Calling-Station-Id}"}'
+        data = '{"username": "%{User-Name}", "password": "%{User-Password}", "calling_station_id": "%{Calling-Station-Id}", "method": "%{control:Auth-Type}"}'
         tls = ${..tls}
     }
 
